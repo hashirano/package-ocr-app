@@ -4,13 +4,14 @@ import easyocr
 from PIL import Image
 import re
 import io
+import numpy as np
 
-# Streamlit App Title
+# App title
 st.title("📦 Package Details Extractor")
-st.write("Upload your package images and extract customer details into Excel format.")
+st.write("Upload package images and extract details into Excel format.")
 
 # Initialize EasyOCR reader
-reader = easyocr.Reader(['en'])
+reader = easyocr.Reader(['en'], gpu=False)
 
 # File uploader
 uploaded_files = st.file_uploader("Upload Package Images", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
@@ -20,9 +21,11 @@ if uploaded_files:
     data_list = []
 
     for file in uploaded_files:
-        img = Image.open(file)
-        # Extract text using EasyOCR
-        result = reader.readtext(file.read(), detail=0)
+        img = Image.open(file).convert("RGB")
+        img_array = np.array(img)  # Convert PIL Image to NumPy array for EasyOCR
+
+        # OCR using EasyOCR
+        result = reader.readtext(img_array, detail=0)
         text = "\n".join(result)
 
         # Extract details using regex
@@ -31,6 +34,7 @@ if uploaded_files:
         tracking = re.search(r"\b[A-Z0-9]{8,}\b", text)
         pcs = re.search(r"(\d+)\s*PCS", text)
 
+        # Try to extract name and place from first lines
         lines = [line.strip() for line in text.split("\n") if line.strip()]
         name = lines[0] if len(lines) > 0 else ""
         place = lines[1] if len(lines) > 1 else ""
@@ -45,7 +49,7 @@ if uploaded_files:
             "No. of PCS": pcs.group(1) if pcs else ""
         })
 
-    # Display table
+    # Show extracted table
     df = pd.DataFrame(data_list)
     st.write("### Extracted Data")
     st.dataframe(df)
