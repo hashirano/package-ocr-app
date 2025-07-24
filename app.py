@@ -1,24 +1,29 @@
 import streamlit as st
 import pandas as pd
-import pytesseract
+import easyocr
 from PIL import Image
 import re
 import io
 
-# App title
+# Streamlit App Title
 st.title("📦 Package Details Extractor")
-st.write("Upload your package images and download extracted details in Excel format.")
+st.write("Upload your package images and extract customer details into Excel format.")
 
-# Upload files
+# Initialize EasyOCR reader
+reader = easyocr.Reader(['en'])
+
+# File uploader
 uploaded_files = st.file_uploader("Upload Package Images", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
 
 if uploaded_files:
-    st.write(f"Uploaded {len(uploaded_files)} images.")
+    st.write(f"Uploaded {len(uploaded_files)} image(s).")
     data_list = []
 
     for file in uploaded_files:
         img = Image.open(file)
-        text = pytesseract.image_to_string(img)
+        # Extract text using EasyOCR
+        result = reader.readtext(file.read(), detail=0)
+        text = "\n".join(result)
 
         # Extract details using regex
         mobile = re.search(r"\b[6-9]\d{9}\b", text)
@@ -40,12 +45,12 @@ if uploaded_files:
             "No. of PCS": pcs.group(1) if pcs else ""
         })
 
-    # Show table
+    # Display table
     df = pd.DataFrame(data_list)
     st.write("### Extracted Data")
     st.dataframe(df)
 
-    # Download button for Excel
+    # Download Excel
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         df.to_excel(writer, index=False)
