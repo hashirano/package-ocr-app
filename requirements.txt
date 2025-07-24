@@ -4,4 +4,4 @@ pillow
 easyocr
 xlsxwriter
 torch
-
+numpy
